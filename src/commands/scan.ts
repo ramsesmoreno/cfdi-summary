@@ -31,7 +31,7 @@ export const builder: CommandBuilder<Options, Options> = yargs =>
     })
 
 export const handler = (argv: Arguments<Options>): void  => {
-  const { dir } = argv
+  const dir = argv.dir as string
   const folderName = String(dir).split('/').at(-1) || '.'
   process.stdout.write(`Buscando en el directorio '${folderName}'... `)
   const xmls = fs.readdirSync(dir as string).filter(f => f.split('.').at(-1) === 'xml')
@@ -95,6 +95,12 @@ export const handler = (argv: Arguments<Options>): void  => {
     invoices.push(invoice)
   })
   invoices.sort((i1, i2) => (i1.date || '') < (i2.date || '') ? -1 : 1)
+
+  let csv = 'fecha,uuid,version,rfc_emisor,emisor,rfc_receptor,receptor,subtotal,iva,retencion_iva,retencion_isr,total\n'
+  invoices.forEach(invoice => {
+    csv += `"${invoice.date}","${invoice.uuid}","${invoice.version}","${invoice.emitterTaxId}","${invoice.emitterName}","${invoice.receiverTaxId}","${invoice.receiverName}","${invoice.amount?.toFixed(2)}","${invoice.iva?.toFixed(2)}","${invoice.ivaRetention?.toFixed(2)}","${invoice.isrRetention?.toFixed(2)}","${invoice.total?.toFixed(2)}"\n`
+  })
+  fs.writeFileSync(`${dir}/${dir.split('/').at(-1)}.csv`, csv)
+
   process.stdout.write(`Listo.\n`)
-  console.log(invoices)
 }
