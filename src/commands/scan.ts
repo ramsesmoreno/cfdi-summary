@@ -1,8 +1,22 @@
 import type { Arguments, CommandBuilder } from 'yargs'
-import { XMLParser } from 'fast-xml-parser'
 import fs from 'fs'
+import * as cheerio from 'cheerio'
 
 type Options = object
+type Invoice = {
+  version?: string
+  uuid?: string,
+  date?: string,
+  emitterTaxId?: string
+  emitterName?: string
+  receiverTaxId?: string
+  receiverName?: string,
+  amount?: number,
+  iva?: number,
+  isrRetention?: number,
+  ivaRetention?: number,
+  total?: number
+}
 
 export const command = '* [d]'
 export const description = 'Buscar archivos XMLs que sean CFDIs y contabilizar su contenido'
@@ -22,13 +36,65 @@ export const handler = (argv: Arguments<Options>): void  => {
   process.stdout.write(`Buscando en el directorio '${folderName}'... `)
   const xmls = fs.readdirSync(dir as string).filter(f => f.split('.').at(-1) === 'xml')
   process.stdout.write(`${xmls.length} xmls encontrados.\n`)
+  const invoices: Invoice[] = []
   xmls.forEach(fileName => {
-    process.stdout.write(`  - ${fileName}\n`)
+    process.stdout.write(` - ${fileName}\n`)
     const filePath = `${dir}/${fileName}`
-    const fileContent = fs.readFileSync(filePath)
-    const parser =  new XMLParser();
-    let fileObject = parser.parse(fileContent);
-    console.log(fileObject)
+    const fileContent = fs.readFileSync(filePath).toString()
+    const fileObject = cheerio.load(fileContent, {
+      xml: true,
+      quirksMode: true,
+      lowerCaseAttributeNames: true,
+      lowerCaseTags: true,
+    })
+    const invoice: Invoice = {
+      amount: 0,
+      iva: 0,
+      isrRetention: 0,
+      ivaRetention: 0,
+    }
+    const schema = fileObject('cfdi\\:Comprobante').attr('xsi:schemalocation')
+    if (!schema?.startsWith('http://www.sat.gob.mx/cfd')) return
+    invoice.uuid = fileObject('tfd\\:TimbreFiscalDigital').attr('uuid')
+    invoice.version = fileObject('cfdi\\:Comprobante').attr('version')
+    invoice.date = fileObject('cfdi\\:Comprobante').attr('fecha')
+    invoice.emitterTaxId = fileObject('cfdi\\:Emisor').attr('rfc')
+    invoice.emitterName = fileObject('cfdi\\:Emisor').attr('nombre')
+    invoice.receiverTaxId = fileObject('cfdi\\:Receptor').attr('rfc')
+    invoice.receiverName = fileObject('cfdi\\:Receptor').attr('nombre')
+    invoice.total = Number(fileObject('cfdi\\:Comprobante').attr('total'))
+
+    const conceptos = fileObject('cfdi\\:Conceptos cfdi\\:Concepto')
+    conceptos.each(index => {
+      invoice.amount! += Number(conceptos[index].attribs.importe)
+    })
+
+    const taxes = fileObject('cfdi\\:Comprobante > cfdi\\:Impuestos > cfdi\\:Traslados > cfdi\\:Traslado')
+    taxes.each(index => {
+      if (taxes[index].attribs.impuesto === '002' || taxes[index].attribs.impuesto === 'IVA') {
+        invoice.iva! += Number(taxes[index].attribs.importe || 0)
+      }
+    })
+
+    const retentions = fileObject('cfdi\\:Comprobante > cfdi\\:Impuestos > cfdi\\:Retenciones cfdi\\:Retencion')
+    retentions.each(index => {
+      if (retentions[index].attribs.impuesto === 'IVA' || retentions[index].attribs.impuesto === '002') {
+        invoice.ivaRetention! += Number(retentions[index].attribs.importe || 0)
+      }
+      if (retentions[index].attribs.impuesto === 'ISR' || retentions[index].attribs.impuesto === '001') {
+        invoice.isrRetention! += Number(retentions[index].attribs.importe || 0)
+      }
+    })
+
+    process.stdout.write(`   - uuid: ${invoice.uuid}\n`)
+    process.stdout.write(`   - fecha: ${invoice.date}\n`)
+    process.stdout.write(`   - version: ${invoice.version}\n`)
+    process.stdout.write(`   - emisor: ${invoice.emitterName}\n`)
+    process.stdout.write(`   - receptor: ${invoice.receiverName}\n`)
+    process.stdout.write(`   - importe: ${invoice.amount}\n`)
+    invoices.push(invoice)
   })
+  invoices.sort((i1, i2) => (i1.date || '') < (i2.date || '') ? -1 : 1)
   process.stdout.write(`Listo.\n`)
+  console.log(invoices)
 }
