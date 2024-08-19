@@ -95,11 +95,21 @@ export const handler = (argv: Arguments<Options>): void  => {
     invoices.push(invoice)
   })
   invoices.sort((i1, i2) => (i1.date || '') < (i2.date || '') ? -1 : 1)
-
+  let amountTotal = 0
+  let ivaTotal = 0
+  let ivaRetentionTotal = 0
+  let isrRetentionTotal=0
+  let total = 0
   let csv = 'fecha,uuid,version,rfc_emisor,emisor,rfc_receptor,receptor,subtotal,iva,retencion_iva,retencion_isr,total\n'
   invoices.forEach(invoice => {
     csv += `"${invoice.date}","${invoice.uuid}","${invoice.version}","${invoice.emitterTaxId}","${invoice.emitterName}","${invoice.receiverTaxId}","${invoice.receiverName}","${invoice.amount?.toFixed(2)}","${invoice.iva?.toFixed(2)}","${invoice.ivaRetention?.toFixed(2)}","${invoice.isrRetention?.toFixed(2)}","${invoice.total?.toFixed(2)}"\n`
+    amountTotal += invoice.amount ?? 0
+    ivaTotal += invoice.iva ?? 0
+    ivaRetentionTotal += invoice.ivaRetention ?? 0
+    isrRetentionTotal += invoice.isrRetention ?? 0
+    total += invoice.total ?? 0
   })
+  csv += `"","","","","","","","${amountTotal.toFixed(2)}","${ivaTotal.toFixed(2)}","${ivaRetentionTotal.toFixed(2)}","${isrRetentionTotal?.toFixed(2)}","${total?.toFixed(2)}"\n`
   fs.writeFileSync(`${dir}/${dir.split('/').at(-1)}.csv`, csv)
 
   process.stdout.write(`Listo.\n`)
