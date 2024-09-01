@@ -37,16 +37,17 @@ export const handler = (argv: Arguments<Options>): void  => {
   const xmls = fs.readdirSync(dir as string).filter(f => f.split('.').at(-1) === 'xml')
   process.stdout.write(`${xmls.length} xmls encontrados.\n`)
   const invoices: Invoice[] = []
+  const cheerioOptions = {
+    xml: true,
+    quirksMode: true,
+    lowerCaseAttributeNames: true,
+    lowerCaseTags: true,
+  }
   xmls.forEach(fileName => {
     process.stdout.write(` - ${fileName}\n`)
     const filePath = `${dir}/${fileName}`
     const fileContent = fs.readFileSync(filePath).toString()
-    const fileObject = cheerio.load(fileContent, {
-      xml: true,
-      quirksMode: true,
-      lowerCaseAttributeNames: true,
-      lowerCaseTags: true,
-    })
+    const fileObject = cheerio.load(fileContent, cheerioOptions)
     const invoice: Invoice = {
       amount: 0,
       iva: 0,
