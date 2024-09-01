@@ -56,6 +56,7 @@ export const handler = (argv: Arguments<Options>): void  => {
     }
     const schema = fileObject('cfdi\\:Comprobante').attr('xsi:schemalocation')
     if (!schema?.startsWith('http://www.sat.gob.mx/cfd')) return
+    invoice.filename = fileName
     invoice.uuid = fileObject('tfd\\:TimbreFiscalDigital').attr('uuid')
     invoice.version = fileObject('cfdi\\:Comprobante').attr('version')
     invoice.date = fileObject('cfdi\\:Comprobante').attr('fecha')
@@ -101,9 +102,9 @@ export const handler = (argv: Arguments<Options>): void  => {
   let ivaRetentionTotal = 0
   let isrRetentionTotal=0
   let total = 0
-  let csv = 'fecha,uuid,version,rfc_emisor,emisor,rfc_receptor,receptor,subtotal,iva,retencion_iva,retencion_isr,total\n'
+  let csv = 'archivo,fecha,uuid,version,rfc_emisor,emisor,rfc_receptor,receptor,subtotal,iva,retencion_iva,retencion_isr,total\n'
   invoices.forEach(invoice => {
-    csv += `"${invoice.date}","${invoice.uuid}","${invoice.version}","${invoice.emitterTaxId}","${invoice.emitterName}","${invoice.receiverTaxId}","${invoice.receiverName}","${invoice.amount?.toFixed(2)}","${invoice.iva?.toFixed(2)}","${invoice.ivaRetention?.toFixed(2)}","${invoice.isrRetention?.toFixed(2)}","${invoice.total?.toFixed(2)}"\n`
+    csv += `"${invoice.filename}","${invoice.date}","${invoice.uuid}","${invoice.version}","${invoice.emitterTaxId}","${invoice.emitterName}","${invoice.receiverTaxId}","${invoice.receiverName}","${invoice.amount?.toFixed(2)}","${invoice.iva?.toFixed(2)}","${invoice.ivaRetention?.toFixed(2)}","${invoice.isrRetention?.toFixed(2)}","${invoice.total?.toFixed(2)}"\n`
     amountTotal += invoice.amount ?? 0
     ivaTotal += invoice.iva ?? 0
     ivaRetentionTotal += invoice.ivaRetention ?? 0
