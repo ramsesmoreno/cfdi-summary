@@ -15,7 +15,8 @@ type Invoice = {
   iva?: number,
   isrRetention?: number,
   ivaRetention?: number,
-  total?: number
+  total?: number,
+  filename?: string
 }
 
 export const command = '* [d]'
@@ -28,10 +29,17 @@ export const builder: CommandBuilder<Options, Options> = yargs =>
       demandOption: false,
       describe: 'Directorio en donde buscar archivos CFDI',
       default: '.'
-    })
+    }).option('r', {
+    alias: 'rename',
+    type: 'boolean',
+    demandOption: false,
+    describe: 'Renombra el archivo con el formato YYY-MM-DD_UUID',
+    default: false
+  })
 
 export const handler = (argv: Arguments<Options>): void  => {
   const dir = argv.dir as string
+  const rename = argv.rename as string
   const folderName = String(dir).split('/').at(-1) || '.'
   process.stdout.write(`Buscando en el directorio '${folderName}'... `)
   const xmls = fs.readdirSync(dir as string).filter(f => f.split('.').at(-1) === 'xml')
@@ -56,7 +64,6 @@ export const handler = (argv: Arguments<Options>): void  => {
     }
     const schema = fileObject('cfdi\\:Comprobante').attr('xsi:schemalocation')
     if (!schema?.startsWith('http://www.sat.gob.mx/cfd')) return
-    invoice.filename = fileName
     invoice.uuid = fileObject('tfd\\:TimbreFiscalDigital').attr('uuid')
     invoice.version = fileObject('cfdi\\:Comprobante').attr('version')
     invoice.date = fileObject('cfdi\\:Comprobante').attr('fecha')
@@ -87,7 +94,16 @@ export const handler = (argv: Arguments<Options>): void  => {
         invoice.isrRetention! += Number(retentions[index].attribs.importe || 0)
       }
     })
-
+    if (rename) {
+      const newName = `${invoice.date?.split('T').at(0)}_${invoice.uuid}`
+      const baseName = fileName.split('.xml').at(0)
+      fs.renameSync(`${dir}/${baseName}.xml`, `${dir}/${newName}.xml`)
+      if (fs.existsSync(`${dir}/${baseName}.pdf`)) fs.renameSync(`${dir}/${baseName}.pdf`, `${dir}/${newName}.pdf`)
+      process.stdout.write(`   - renombrado como: ${newName}\n`)
+      invoice.filename = newName
+    } else {
+      invoice.filename = fileName
+    }
     process.stdout.write(`   - uuid: ${invoice.uuid}\n`)
     process.stdout.write(`   - fecha: ${invoice.date}\n`)
     process.stdout.write(`   - version: ${invoice.version}\n`)
@@ -111,7 +127,7 @@ export const handler = (argv: Arguments<Options>): void  => {
     isrRetentionTotal += invoice.isrRetention ?? 0
     total += invoice.total ?? 0
   })
-  csv += `"","","","","","","","${amountTotal.toFixed(2)}","${ivaTotal.toFixed(2)}","${ivaRetentionTotal.toFixed(2)}","${isrRetentionTotal?.toFixed(2)}","${total?.toFixed(2)}"\n`
+  csv += `"","","","","","","","","${amountTotal.toFixed(2)}","${ivaTotal.toFixed(2)}","${ivaRetentionTotal.toFixed(2)}","${isrRetentionTotal?.toFixed(2)}","${total?.toFixed(2)}"\n`
   fs.writeFileSync(`${dir}/${dir.split('/').at(-1)}.csv`, csv)
 
   process.stdout.write(`Listo.\n`)
