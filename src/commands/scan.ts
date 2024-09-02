@@ -29,13 +29,28 @@ export const builder: CommandBuilder<Options, Options> = yargs =>
       demandOption: false,
       describe: 'Directorio en donde buscar archivos CFDI',
       default: '.'
-    }).option('r', {
-    alias: 'rename',
-    type: 'boolean',
-    demandOption: false,
-    describe: 'Renombra el archivo con el formato YYY-MM-DD_UUID',
-    default: false
-  })
+    })
+    .option('r', {
+      alias: 'rename',
+      type: 'boolean',
+      demandOption: false,
+      describe: 'Renombra el archivo con el formato YYY-MM-DD_UUID',
+      default: false
+    })
+    .option('p', {
+      alias: 'prefix',
+      type: 'string',
+      demandOption: false,
+      describe: 'Si se renombra, agregar este prefijo',
+      default: ''
+    })
+    .option('s', {
+      alias: 'suffix',
+      type: 'string',
+      demandOption: false,
+      describe: 'Si se renombra, agregar este sufijo',
+      default: ''
+    })
 
 export const handler = (argv: Arguments<Options>): void  => {
   const dir = argv.dir as string
@@ -97,9 +112,9 @@ export const handler = (argv: Arguments<Options>): void  => {
     if (rename) {
       const newName = `${invoice.date?.split('T').at(0)}_${invoice.uuid}`
       const baseName = fileName.split('.xml').at(0)
-      fs.renameSync(`${dir}/${baseName}.xml`, `${dir}/${newName}.xml`)
-      if (fs.existsSync(`${dir}/${baseName}.pdf`)) fs.renameSync(`${dir}/${baseName}.pdf`, `${dir}/${newName}.pdf`)
-      process.stdout.write(`   - renombrado como: ${newName}\n`)
+      fs.renameSync(`${dir}/${baseName}.xml`, `${dir}/${argv.prefix}${newName}${argv.suffix}.xml`)
+      if (fs.existsSync(`${dir}/${baseName}.pdf`)) fs.renameSync(`${dir}/${baseName}.pdf`, `${dir}/${argv.prefix}${newName}${argv.suffix}.pdf`)
+      process.stdout.write(`   - renombrado como: ${argv.prefix}${newName}${argv.suffix}\n`)
       invoice.filename = newName
     } else {
       invoice.filename = fileName
