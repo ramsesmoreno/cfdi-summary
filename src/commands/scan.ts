@@ -115,7 +115,7 @@ export const handler = (argv: Arguments<Options>): void  => {
       fs.renameSync(`${dir}/${baseName}.xml`, `${dir}/${argv.prefix}${newName}${argv.suffix}.xml`)
       if (fs.existsSync(`${dir}/${baseName}.pdf`)) fs.renameSync(`${dir}/${baseName}.pdf`, `${dir}/${argv.prefix}${newName}${argv.suffix}.pdf`)
       process.stdout.write(`   - renombrado como: ${argv.prefix}${newName}${argv.suffix}\n`)
-      invoice.filename = newName
+      invoice.filename = `${argv.prefix}${newName}${argv.suffix}\n`
     } else {
       invoice.filename = fileName
     }
