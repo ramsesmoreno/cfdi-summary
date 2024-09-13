@@ -1,6 +1,7 @@
 import type { Arguments, CommandBuilder } from 'yargs'
 import fs from 'fs'
 import * as cheerio from 'cheerio'
+import { pdfTextExtract } from '@vestfoldfylke/pdf-text-extract'
 
 type Options = object
 type Invoice = {
@@ -52,7 +53,7 @@ export const builder: CommandBuilder<Options, Options> = yargs =>
       default: ''
     })
 
-export const handler = (argv: Arguments<Options>): void  => {
+export const handler = async (argv: Arguments<Options>): Promise<void>  => {
   const dir = argv.dir as string
   const rename = argv.rename as string
   const folderName = String(dir).split('/').at(-1) || '.'
@@ -65,6 +66,25 @@ export const handler = (argv: Arguments<Options>): void  => {
     quirksMode: true,
     lowerCaseAttributeNames: true,
     lowerCaseTags: true,
+  }
+  const pdfMap = new Map()
+  if (rename) {
+    // Scan for pdfs and try to read the Folio Fiscal to have it handy
+    const pdfs = fs.readdirSync(dir as string).filter(f => f.split('.').at(-1) === 'pdf')
+    for (let pdf in pdfs) {
+      const pdfData = pdfTextExtract(`${dir}/${pdfs[pdf]}`)
+      for (let p = 0; p < pdfData.pages?.length || 0; p++) {
+        const textLines = pdfData.pages[p].textLines
+        for (let l = 0; l < pdfData.pages[p].textLines.length; l++) {
+          const line = pdfData.pages[p].textLines[l]
+          const match = line.match(/[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}/)
+          if (match !== null) {
+            pdfMap.set(match[0], pdfs[pdf])
+          }
+        }
+      }
+    }
+    console.log(pdfMap)
   }
   xmls.forEach(fileName => {
     process.stdout.write(` - ${fileName}\n`)
@@ -113,7 +133,12 @@ export const handler = (argv: Arguments<Options>): void  => {
       const newName = `${invoice.date?.split('T').at(0)}_${invoice.uuid}`
       const baseName = fileName.split('.xml').at(0)
       fs.renameSync(`${dir}/${baseName}.xml`, `${dir}/${argv.prefix}${newName}${argv.suffix}.xml`)
-      if (fs.existsSync(`${dir}/${baseName}.pdf`)) fs.renameSync(`${dir}/${baseName}.pdf`, `${dir}/${argv.prefix}${newName}${argv.suffix}.pdf`)
+      // Check if a related PDF exists, first by filename
+      if (fs.existsSync(`${dir}/${baseName}.pdf`)) {
+        fs.renameSync(`${dir}/${baseName}.pdf`, `${dir}/${argv.prefix}${newName}${argv.suffix}.pdf`)
+      } else if (pdfMap.has(invoice.uuid)) {
+        fs.renameSync(`${dir}/${pdfMap.get(invoice.uuid)}`, `${dir}/${argv.prefix}${newName}${argv.suffix}.pdf`)
+      }
       process.stdout.write(`   - renombrado como: ${argv.prefix}${newName}${argv.suffix}\n`)
       invoice.filename = `${argv.prefix}${newName}${argv.suffix}\n`
     } else {

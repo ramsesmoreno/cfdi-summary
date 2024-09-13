@@ -20,10 +20,12 @@
     "typescript": "^5.5.4"
   },
   "dependencies": {
+    "@vestfoldfylke/pdf-text-extract": "^2.0.0",
     "cheerio": "^1.0.0",
+    "pdf-text-reader": "^5.1.0",
     "yargs": "^17.7.2"
   },
-  "engines" : {
-    "node" : ">=20.0.0 <21.0.0"
+  "engines": {
+    "node": ">=20.0.0 <21.0.0"
   }
 }
