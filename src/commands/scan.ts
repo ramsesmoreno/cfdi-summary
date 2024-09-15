@@ -117,15 +117,12 @@ export const handler = async (argv: Arguments<Options>): Promise<void>  => {
     if (argv.agrupar !== undefined) {
       if (argv.agrupar !== '') {
         if (!fs.existsSync(`${dir}/recibidas`)) fs.mkdirSync(`${dir}/recibidas`)
-        if (!fs.existsSync(`${dir}/recibidas/ingresos`)) fs.mkdirSync(`${dir}/recibidas/ingresos`)
         if (!fs.existsSync(`${dir}/recibidas/egresos`)) fs.mkdirSync(`${dir}/recibidas/egresos`)
         if (!fs.existsSync(`${dir}/recibidas/complementos`)) fs.mkdirSync(`${dir}/recibidas/complementos`)
         if (!fs.existsSync(`${dir}/emitidas`)) fs.mkdirSync(`${dir}/emitidas`)
-        if (!fs.existsSync(`${dir}/emitidas/ingresos`)) fs.mkdirSync(`${dir}/emitidas/ingresos`)
         if (!fs.existsSync(`${dir}/emitidas/egresos`)) fs.mkdirSync(`${dir}/emitidas/egresos`)
         if (!fs.existsSync(`${dir}/emitidas/complementos`)) fs.mkdirSync(`${dir}/emitidas/complementos`)
       } else {
-        if (!fs.existsSync(`${dir}/ingresos`)) fs.mkdirSync(`${dir}/ingresos`)
         if (!fs.existsSync(`${dir}/egresos`)) fs.mkdirSync(`${dir}/egresos`)
         if (!fs.existsSync(`${dir}/complementos`)) fs.mkdirSync(`${dir}/complementos`)
       }
@@ -182,7 +179,7 @@ export const handler = async (argv: Arguments<Options>): Promise<void>  => {
         if (argv.agrupar !== '') {
           newDir += String(invoice.emitterTaxId).toUpperCase() === String(argv.agrupar).toUpperCase() ? '/emitidas' : (String(invoice.receiverTaxId).toUpperCase() === String(argv.agrupar).toUpperCase() ? '/recibidas' : '')
         }
-        newDir += invoice.type === 'Ingreso' ? '/ingresos' : (invoice.type === 'Egreso' ? '/egresos' : '/complementos')
+        newDir += invoice.type === 'Ingreso' ? '' : (invoice.type === 'Egreso' ? '/egresos' : '/complementos')
       }
       const newName = `${invoice.date?.split('T').at(0)}_${invoice.uuid}`
       const baseName = fileName.split('.xml').at(0)
