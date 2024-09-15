@@ -67,10 +67,16 @@ export const builder: CommandBuilder<Options, Options> = yargs =>
       describe: 'Si se renombra, agregar este sufijo',
       default: ''
     })
+    .option('a', {
+      alias: 'agrupar',
+      type: 'string',
+      demandOption: false,
+      describe: 'Agrupar las facturas en directorios diferentes, si se proporciona un RFC, la primer separación se hará en emitidas y recibidas, la segunda separación por tipos: ingresos, egresos, pagos... en diferentes directorios. Solo funciona en combinación con --rename / -r'
+    })
 
 export const handler = async (argv: Arguments<Options>): Promise<void>  => {
   const dir = argv.dir as string
-  const rename = argv.rename as string
+  const rename = argv.renombrar as string
   const folderName = String(dir).split('/').at(-1) || '.'
   process.stdout.write(`Buscando en el directorio '${folderName}'... `)
   const xmls = fs.readdirSync(dir as string).filter(f => f.split('.').at(-1) === 'xml')
@@ -85,18 +91,43 @@ export const handler = async (argv: Arguments<Options>): Promise<void>  => {
   const pdfMap = new Map()
   if (rename) {
     // Scan for pdfs and try to read the Folio Fiscal to have it handy
+    const uuidRegex = /[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}/
     const pdfs = fs.readdirSync(dir as string).filter(f => f.split('.').at(-1) === 'pdf')
+    // First check filenames
+    for (let pdf in pdfs) {
+      const filenameMatch = pdf.match(uuidRegex)
+      if (filenameMatch !== null) {
+        pdfMap.set(filenameMatch[0], pdfs[pdf])
+      }
+    }
+    // The file contents
     for (let pdf in pdfs) {
       const pdfData = await pdfTextExtract(`${dir}/${pdfs[pdf]}`)
       for (let p = 0; p < pdfData.pages?.length || 0; p++) {
         const textLines = pdfData.pages[p].textLines
         for (let l = 0; l < pdfData.pages[p].textLines.length; l++) {
           const line = pdfData.pages[p].textLines[l]
-          const match = line.match(/[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}/)
-          if (match !== null) {
-            pdfMap.set(match[0], pdfs[pdf])
+          const contentMatch = line.match(uuidRegex)
+          if (contentMatch !== null && !pdfMap.has(contentMatch[0])) {
+            pdfMap.set(contentMatch[0], pdfs[pdf])
           }
         }
+      }
+    }
+    if (argv.agrupar !== undefined) {
+      if (argv.agrupar !== '') {
+        if (!fs.existsSync(`${dir}/recibidas`)) fs.mkdirSync(`${dir}/recibidas`)
+        if (!fs.existsSync(`${dir}/recibidas/ingresos`)) fs.mkdirSync(`${dir}/recibidas/ingresos`)
+        if (!fs.existsSync(`${dir}/recibidas/egresos`)) fs.mkdirSync(`${dir}/recibidas/egresos`)
+        if (!fs.existsSync(`${dir}/recibidas/complementos`)) fs.mkdirSync(`${dir}/recibidas/complementos`)
+        if (!fs.existsSync(`${dir}/emitidas`)) fs.mkdirSync(`${dir}/emitidas`)
+        if (!fs.existsSync(`${dir}/emitidas/ingresos`)) fs.mkdirSync(`${dir}/emitidas/ingresos`)
+        if (!fs.existsSync(`${dir}/emitidas/egresos`)) fs.mkdirSync(`${dir}/emitidas/egresos`)
+        if (!fs.existsSync(`${dir}/emitidas/complementos`)) fs.mkdirSync(`${dir}/emitidas/complementos`)
+      } else {
+        if (!fs.existsSync(`${dir}/ingresos`)) fs.mkdirSync(`${dir}/ingresos`)
+        if (!fs.existsSync(`${dir}/egresos`)) fs.mkdirSync(`${dir}/egresos`)
+        if (!fs.existsSync(`${dir}/complementos`)) fs.mkdirSync(`${dir}/complementos`)
       }
     }
   }
@@ -146,14 +177,21 @@ export const handler = async (argv: Arguments<Options>): Promise<void>  => {
       }
     })
     if (rename) {
+      let newDir = dir
+      if (argv.agrupar !== undefined) {
+        if (argv.agrupar !== '') {
+          newDir += String(invoice.emitterTaxId).toUpperCase() === String(argv.agrupar).toUpperCase() ? '/emitidas' : (String(invoice.receiverTaxId).toUpperCase() === String(argv.agrupar).toUpperCase() ? '/recibidas' : '')
+        }
+        newDir += invoice.type === 'Ingreso' ? '/ingresos' : (invoice.type === 'Egreso' ? '/egresos' : '/complementos')
+      }
       const newName = `${invoice.date?.split('T').at(0)}_${invoice.uuid}`
       const baseName = fileName.split('.xml').at(0)
-      fs.renameSync(`${dir}/${baseName}.xml`, `${dir}/${argv.prefijo}${newName}${argv.sufijo}.xml`)
+      fs.renameSync(`${dir}/${baseName}.xml`, `${newDir}/${argv.prefijo}${newName}${argv.sufijo}.xml`)
       // Check if a related PDF exists, first by filename
       if (fs.existsSync(`${dir}/${baseName}.pdf`)) {
-        fs.renameSync(`${dir}/${baseName}.pdf`, `${dir}/${argv.prefijo}${newName}${argv.sufijo}.pdf`)
+        fs.renameSync(`${dir}/${baseName}.pdf`, `${newDir}/${argv.prefijo}${newName}${argv.sufijo}.pdf`)
       } else if (pdfMap.has(invoice.uuid) && fs.existsSync(`${dir}/${pdfMap.get(invoice.uuid)}`)) {
-        fs.renameSync(`${dir}/${pdfMap.get(invoice.uuid)}`, `${dir}/${argv.prefijo}${newName}${argv.sufijo}.pdf`)
+        fs.renameSync(`${dir}/${pdfMap.get(invoice.uuid)}`, `${newDir}/${argv.prefijo}${newName}${argv.sufijo}.pdf`)
       }
       process.stdout.write(`   - renombrado como: ${argv.prefijo}${newName}${argv.sufijo}\n`)
       invoice.filename = `${argv.prefijo}${newName}${argv.sufijo}\n`
