@@ -143,12 +143,12 @@ export const handler = async (argv: Arguments<Options>): Promise<void>  => {
     } else {
       invoice.filename = fileName
     }
-   /* process.stdout.write(`   - uuid: ${invoice.uuid}\n`)
+   process.stdout.write(`   - uuid: ${invoice.uuid}\n`)
     process.stdout.write(`   - fecha: ${invoice.date}\n`)
     process.stdout.write(`   - version: ${invoice.version}\n`)
     process.stdout.write(`   - emisor: ${invoice.emitterName}\n`)
     process.stdout.write(`   - receptor: ${invoice.receiverName}\n`)
-    process.stdout.write(`   - importe: ${invoice.amount}\n`)*/
+    process.stdout.write(`   - importe: ${invoice.amount}\n`)
     invoices.push(invoice)
   })
   invoices.sort((i1, i2) => (i1.date || '') < (i2.date || '') ? -1 : 1)
