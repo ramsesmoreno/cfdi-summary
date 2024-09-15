@@ -17,7 +17,22 @@ type Invoice = {
   isrRetention?: number,
   ivaRetention?: number,
   total?: number,
-  filename?: string
+  filename?: string,
+  type?: string,
+  currency?: string
+}
+
+const mapType = (type: string) => {
+  switch (type) {
+    case 'I':
+      return 'Ingreso'
+    case 'E':
+      return 'Egreso'
+    case 'P':
+      return 'Pago'
+    default:
+      return 'Desconocido'
+  }
 }
 
 export const command = '* [d]'
@@ -106,6 +121,8 @@ export const handler = async (argv: Arguments<Options>): Promise<void>  => {
     invoice.receiverTaxId = fileObject('cfdi\\:Receptor').attr('rfc')
     invoice.receiverName = fileObject('cfdi\\:Receptor').attr('nombre')
     invoice.total = Number(fileObject('cfdi\\:Comprobante').attr('total'))
+    invoice.type = mapType(fileObject('cfdi\\:Comprobante').attr('tipodecomprobante'))
+    invoice.currency = fileObject('cfdi\\:Comprobante').attr('moneda')
 
     const conceptos = fileObject('cfdi\\:Conceptos cfdi\\:Concepto')
     conceptos.each(index => {
@@ -143,12 +160,13 @@ export const handler = async (argv: Arguments<Options>): Promise<void>  => {
     } else {
       invoice.filename = fileName
     }
-   process.stdout.write(`   - uuid: ${invoice.uuid}\n`)
-    process.stdout.write(`   - fecha: ${invoice.date}\n`)
-    process.stdout.write(`   - version: ${invoice.version}\n`)
-    process.stdout.write(`   - emisor: ${invoice.emitterName}\n`)
+    process.stdout.write(`   - uuid:     ${invoice.uuid}\n`)
+    process.stdout.write(`   - fecha:    ${invoice.date}\n`)
+    process.stdout.write(`   - version:  ${invoice.version}\n`)
+    process.stdout.write(`   - emisor:   ${invoice.emitterName}\n`)
     process.stdout.write(`   - receptor: ${invoice.receiverName}\n`)
-    process.stdout.write(`   - importe: ${invoice.amount}\n`)
+    process.stdout.write(`   - importe:  ${invoice.amount}\n`)
+    process.stdout.write(`   - tipo:     ${invoice.type}\n`)
     invoices.push(invoice)
   })
   invoices.sort((i1, i2) => (i1.date || '') < (i2.date || '') ? -1 : 1)
@@ -157,16 +175,16 @@ export const handler = async (argv: Arguments<Options>): Promise<void>  => {
   let ivaRetentionTotal = 0
   let isrRetentionTotal=0
   let total = 0
-  let csv = 'archivo,fecha,uuid,version,rfc_emisor,emisor,rfc_receptor,receptor,subtotal,iva,retencion_iva,retencion_isr,total\n'
+  let csv = 'archivo,fecha,uuid,version,rfc_emisor,emisor,rfc_receptor,receptor,tipo,moneda,subtotal,iva,retencion_iva,retencion_isr,total\n'
   invoices.forEach(invoice => {
-    csv += `"${invoice.filename}","${invoice.date}","${invoice.uuid}","${invoice.version}","${invoice.emitterTaxId}","${invoice.emitterName}","${invoice.receiverTaxId}","${invoice.receiverName}","${invoice.amount?.toFixed(2)}","${invoice.iva?.toFixed(2)}","${invoice.ivaRetention?.toFixed(2)}","${invoice.isrRetention?.toFixed(2)}","${invoice.total?.toFixed(2)}"\n`
-    amountTotal += invoice.amount ?? 0
+    csv += `"${invoice.filename}","${invoice.date}","${invoice.uuid}","${invoice.version}","${invoice.emitterTaxId}","${invoice.emitterName}","${invoice.receiverTaxId}","${invoice.receiverName}","${invoice.type}","${invoice.currency}","${invoice.amount?.toFixed(2)}","${invoice.iva?.toFixed(2)}","${invoice.ivaRetention?.toFixed(2)}","${invoice.isrRetention?.toFixed(2)}","${invoice.total?.toFixed(2)}"\n`
+    amountTotal += invoice.type === 'I' ? invoice.amount ?? 0 : 0
     ivaTotal += invoice.iva ?? 0
     ivaRetentionTotal += invoice.ivaRetention ?? 0
     isrRetentionTotal += invoice.isrRetention ?? 0
     total += invoice.total ?? 0
   })
-  csv += `"","","","","","","","","${amountTotal.toFixed(2)}","${ivaTotal.toFixed(2)}","${ivaRetentionTotal.toFixed(2)}","${isrRetentionTotal?.toFixed(2)}","${total?.toFixed(2)}"\n`
+  csv += `"","","","","","","","","","","${amountTotal.toFixed(2)}","${ivaTotal.toFixed(2)}","${ivaRetentionTotal.toFixed(2)}","${isrRetentionTotal?.toFixed(2)}","${total?.toFixed(2)}"\n`
   fs.writeFileSync(`${dir}/${dir.split('/').at(-1)}.csv`, csv)
 
   process.stdout.write(`Listo.\n`)
