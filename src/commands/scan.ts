@@ -148,15 +148,15 @@ export const handler = async (argv: Arguments<Options>): Promise<void>  => {
     if (rename) {
       const newName = `${invoice.date?.split('T').at(0)}_${invoice.uuid}`
       const baseName = fileName.split('.xml').at(0)
-      fs.renameSync(`${dir}/${baseName}.xml`, `${dir}/${argv.prefix}${newName}${argv.suffix}.xml`)
+      fs.renameSync(`${dir}/${baseName}.xml`, `${dir}/${argv.prefijo}${newName}${argv.sufijo}.xml`)
       // Check if a related PDF exists, first by filename
       if (fs.existsSync(`${dir}/${baseName}.pdf`)) {
-        fs.renameSync(`${dir}/${baseName}.pdf`, `${dir}/${argv.prefix}${newName}${argv.suffix}.pdf`)
+        fs.renameSync(`${dir}/${baseName}.pdf`, `${dir}/${argv.prefijo}${newName}${argv.sufijo}.pdf`)
       } else if (pdfMap.has(invoice.uuid) && fs.existsSync(`${dir}/${pdfMap.get(invoice.uuid)}`)) {
-        fs.renameSync(`${dir}/${pdfMap.get(invoice.uuid)}`, `${dir}/${argv.prefix}${newName}${argv.suffix}.pdf`)
+        fs.renameSync(`${dir}/${pdfMap.get(invoice.uuid)}`, `${dir}/${argv.prefijo}${newName}${argv.sufijo}.pdf`)
       }
-      process.stdout.write(`   - renombrado como: ${argv.prefix}${newName}${argv.suffix}\n`)
-      invoice.filename = `${argv.prefix}${newName}${argv.suffix}\n`
+      process.stdout.write(`   - renombrado como: ${argv.prefijo}${newName}${argv.sufijo}\n`)
+      invoice.filename = `${argv.prefijo}${newName}${argv.sufijo}\n`
     } else {
       invoice.filename = fileName
     }
