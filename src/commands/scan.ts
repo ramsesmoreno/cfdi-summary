@@ -47,21 +47,21 @@ export const builder: CommandBuilder<Options, Options> = yargs =>
       default: '.'
     })
     .option('r', {
-      alias: 'rename',
+      alias: 'renombrar',
       type: 'boolean',
       demandOption: false,
       describe: 'Renombra el archivo con el formato YYY-MM-DD_UUID',
       default: false
     })
     .option('p', {
-      alias: 'prefix',
+      alias: 'prefijo',
       type: 'string',
       demandOption: false,
       describe: 'Si se renombra, agregar este prefijo',
       default: ''
     })
     .option('s', {
-      alias: 'suffix',
+      alias: 'sufijo',
       type: 'string',
       demandOption: false,
       describe: 'Si se renombra, agregar este sufijo',
