@@ -72,7 +72,7 @@ export const handler = async (argv: Arguments<Options>): Promise<void>  => {
     // Scan for pdfs and try to read the Folio Fiscal to have it handy
     const pdfs = fs.readdirSync(dir as string).filter(f => f.split('.').at(-1) === 'pdf')
     for (let pdf in pdfs) {
-      const pdfData = pdfTextExtract(`${dir}/${pdfs[pdf]}`)
+      const pdfData = await pdfTextExtract(`${dir}/${pdfs[pdf]}`)
       for (let p = 0; p < pdfData.pages?.length || 0; p++) {
         const textLines = pdfData.pages[p].textLines
         for (let l = 0; l < pdfData.pages[p].textLines.length; l++) {
@@ -84,7 +84,6 @@ export const handler = async (argv: Arguments<Options>): Promise<void>  => {
         }
       }
     }
-    console.log(pdfMap)
   }
   xmls.forEach(fileName => {
     process.stdout.write(` - ${fileName}\n`)
@@ -136,7 +135,7 @@ export const handler = async (argv: Arguments<Options>): Promise<void>  => {
       // Check if a related PDF exists, first by filename
       if (fs.existsSync(`${dir}/${baseName}.pdf`)) {
         fs.renameSync(`${dir}/${baseName}.pdf`, `${dir}/${argv.prefix}${newName}${argv.suffix}.pdf`)
-      } else if (pdfMap.has(invoice.uuid)) {
+      } else if (pdfMap.has(invoice.uuid) && fs.existsSync(`${dir}/${pdfMap.get(invoice.uuid)}`)) {
         fs.renameSync(`${dir}/${pdfMap.get(invoice.uuid)}`, `${dir}/${argv.prefix}${newName}${argv.suffix}.pdf`)
       }
       process.stdout.write(`   - renombrado como: ${argv.prefix}${newName}${argv.suffix}\n`)
@@ -144,12 +143,12 @@ export const handler = async (argv: Arguments<Options>): Promise<void>  => {
     } else {
       invoice.filename = fileName
     }
-    process.stdout.write(`   - uuid: ${invoice.uuid}\n`)
+   /* process.stdout.write(`   - uuid: ${invoice.uuid}\n`)
     process.stdout.write(`   - fecha: ${invoice.date}\n`)
     process.stdout.write(`   - version: ${invoice.version}\n`)
     process.stdout.write(`   - emisor: ${invoice.emitterName}\n`)
     process.stdout.write(`   - receptor: ${invoice.receiverName}\n`)
-    process.stdout.write(`   - importe: ${invoice.amount}\n`)
+    process.stdout.write(`   - importe: ${invoice.amount}\n`)*/
     invoices.push(invoice)
   })
   invoices.sort((i1, i2) => (i1.date || '') < (i2.date || '') ? -1 : 1)

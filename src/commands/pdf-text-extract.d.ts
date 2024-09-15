@@ -1,5 +1,5 @@
 declare module '@vestfoldfylke/pdf-text-extract' {
-  function pdfTextExtract(path: string): {
+  function pdfTextExtract(path: string): Promise<{
     metadata: {
       info: {
         PDFFormatVersion: string,
@@ -39,5 +39,5 @@ declare module '@vestfoldfylke/pdf-text-extract' {
       descent: number
       vertical: boolean
     }[]
-  }
+  }>
 }
